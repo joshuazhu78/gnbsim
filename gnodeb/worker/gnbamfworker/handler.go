@@ -468,3 +468,51 @@ func HandleUeCtxReleaseCommand(gnb *gnbctx.GNodeB, amf *gnbctx.GnbAmf,
 
 	SendToGnbUe(gnbue, common.UE_CTX_RELEASE_COMMAND_EVENT, pdu)
 }
+
+func HandlePduSessResourceModifyRequest(gnb *gnbctx.GNodeB, amf *gnbctx.GnbAmf,
+        pdu *ngapType.NGAPPDU) {
+	amf.Log.Traceln("Processing Pdu Session Resource Modify Request")
+	var gnbUeNgapId *ngapType.RANUENGAPID
+
+	if amf == nil {
+		amf.Log.Errorln("ran is nil")
+		return
+	}
+	if pdu == nil {
+		amf.Log.Errorln("NGAP Message is nil")
+		return
+	}
+	if gnb == nil {
+		amf.Log.Errorln("gNodeB context is nil")
+		return
+	}
+	initiatingMessage := pdu.InitiatingMessage
+	if initiatingMessage == nil {
+		amf.Log.Errorln("Initiating Message is nil")
+		return
+	}
+	pduSessResourceModifyRequest := initiatingMessage.Value.PDUSessionResourceModifyRequest
+	if pduSessResourceModifyRequest == nil {
+		amf.Log.Errorln("PDUSessionResourceModifyRequest is nil")
+		return
+	}
+	for _, ie := range pduSessResourceModifyRequest.ProtocolIEs.List {
+		if ie.Id.Value == ngapType.ProtocolIEIDRANUENGAPID {
+			gnbUeNgapId = ie.Value.RANUENGAPID
+			amf.Log.Traceln("Decode IE RANUENGAPID")
+			if gnbUeNgapId == nil {
+				amf.Log.Errorln("RANUENGAPID is nil")
+				return
+			}
+			break
+		}
+	}
+	ngapId := gnbUeNgapId.Value
+	gnbue := gnb.GnbUes.GetGnbCpUe(ngapId)
+	if gnbue == nil {
+		amf.Log.Errorln("No GnbUe found corresponding to RANUENGAPID:")
+		return
+	}
+
+	SendToGnbUe(gnbue, common.PDU_SESS_RESOURCE_MODIFY_REQUEST_EVENT, pdu)
+}

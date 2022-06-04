@@ -446,3 +446,31 @@ func HandleNwDeregAcceptEvent(ue *realuectx.RealUe, msg common.InterfaceMessage)
 	ue.Log.Traceln("Sent Dereg Accept UE Terminated Message to SimUe")
 	return nil
 }
+
+func HandlePduSessModifyCompleteEvent(ue *realuectx.RealUe,
+	intfcMsg common.InterfaceMessage) (err error) {
+
+	msg := intfcMsg.(*common.UeMessage)
+	nasMsg := msg.NasMsg.PDUSessionModificationCommand
+	if nasMsg == nil {
+		ue.Log.Errorln("PDUSessionModificationCommand is nil")
+		return fmt.Errorf("invalid NAS Message")
+	}
+
+	pduSessId := nasMsg.PDUSessionID.Octet
+	ue.Log.Infoln("PDU Session Modification Request, PDU Session ID:", pduSessId)
+
+	nasPdu := nasTestpacket.GetUlNasTransport_PduSessionCommonData(pduSessId,
+		nasTestpacket.PDUSesModiCmp)
+
+	nasPdu, err = realue_nas.EncodeNasPduWithSecurity(ue, nasPdu,
+		nas.SecurityHeaderTypeIntegrityProtectedAndCiphered, true)
+	if err != nil {
+		fmt.Println("Failed to encrypt PDU Session Modification Complete Message", err)
+		return
+	}
+
+	m := formUuMessage(common.PDU_SESS_MOD_COMPLETE_EVENT, nasPdu)
+	SendToSimUe(ue, m)
+	return nil
+}

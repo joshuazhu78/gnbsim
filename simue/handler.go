@@ -488,3 +488,37 @@ func HandleProcedure(ue *simuectx.SimUe) {
 		ue.Log.Infoln("Waiting for N/W Requested PDU Session Release Procedure")
 	}
 }
+
+func HandlePduSessModificationCommandEvent(ue *simuectx.SimUe,
+	intfcMsg common.InterfaceMessage) (err error) {
+
+	msg := intfcMsg.(*common.UeMessage)
+	if ue.Procedure == common.NW_REQUESTED_PDU_SESSION_MODIFY_PROCEDURE {
+		err = ue.ProfileCtx.CheckCurrentEvent(common.PDU_SESS_MOD_REQUEST_EVENT, msg.Event)
+		if err != nil {
+			ue.Log.Errorln("CheckCurrentEvent returned:", err)
+			return err
+		}
+	}
+	nextEvent, err := ue.ProfileCtx.GetNextEvent(msg.Event)
+	if err != nil {
+		ue.Log.Errorln("GetNextEvent returned:", err)
+		return err
+	}
+	ue.Log.Infoln("Next Event:", nextEvent)
+	msg.Event = nextEvent
+	SendToRealUe(ue, msg)
+	return nil
+}
+
+func HandlePduSessModificationCompleteEvent(ue *simuectx.SimUe,
+	intfcMsg common.InterfaceMessage) (err error) {
+
+	err = ue.ProfileCtx.CheckCurrentEvent(common.PDU_SESS_MOD_COMMAND_EVENT,
+		intfcMsg.GetEventType())
+	if err != nil {
+		ue.Log.Errorln("CheckCurrentEvent returned:", err)
+		return err
+	}
+	return nil
+}

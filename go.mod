@@ -17,21 +17,20 @@ require (
 	github.com/free5gc/milenage v1.0.0
 	github.com/free5gc/ngap v1.0.1
 	github.com/free5gc/openapi v1.0.0
-	github.com/google/go-cmp v0.5.4 // indirect
-	github.com/klauspost/compress v1.11.6 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/omec-project/nas v1.0.6-gnbsim
-	github.com/sirupsen/logrus v1.7.0
+	github.com/onosproject/onos-api/go v0.9.15
+	github.com/onosproject/onos-lib-go v0.8.16
+	github.com/sirupsen/logrus v1.8.1
 	github.com/ugorji/go v1.2.3 // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/yerden/go-util v1.1.4
 	go.mongodb.org/mongo-driver v1.4.4
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
-	golang.org/x/net v0.0.0-20201224014010-6772e930b67b
-	golang.org/x/sys v0.0.0-20210112091331-59c308dcf3cc
-	golang.org/x/text v0.3.5 // indirect
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
+	google.golang.org/grpc v1.41.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v2 v2.4.0
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
+
+replace github.com/docker/docker => github.com/docker/engine v1.4.2-0.20200229013735-71373c6105e3

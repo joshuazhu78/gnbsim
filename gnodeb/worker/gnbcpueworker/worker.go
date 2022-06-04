@@ -40,6 +40,8 @@ func HandleEvents(gnbue *gnbctx.GnbCpUe) (err error) {
 			HandleUeCtxReleaseCommand(gnbue, msg)
 		case common.TRIGGER_AN_RELEASE_EVENT:
 			HandleRanConnectionRelease(gnbue, msg)
+		case common.PDU_SESS_RESOURCE_MODIFY_REQUEST_EVENT:
+			HandlePduSessResourceModifyRequest(gnbue, msg)
 		case common.QUIT_EVENT:
 			HandleQuitEvent(gnbue, msg)
 			return

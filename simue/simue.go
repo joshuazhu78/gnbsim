@@ -114,6 +114,10 @@ func HandleEvents(ue *simuectx.SimUe) {
 			err = HandleNwDeregRequestEvent(ue, msg)
 		case common.DEREG_ACCEPT_UE_TERM_EVENT:
 			err = HandleNwDeregAcceptEvent(ue, msg)
+		case common.PDU_SESS_MOD_COMMAND_EVENT:
+			err = HandlePduSessModificationCommandEvent(ue, msg)
+		case common.PDU_SESS_MOD_COMPLETE_EVENT:
+			err = HandlePduSessModificationCompleteEvent(ue, msg)
 		case common.ERROR_EVENT:
 			HandleErrorEvent(ue, msg)
 			return

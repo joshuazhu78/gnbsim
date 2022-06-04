@@ -30,6 +30,12 @@ type pduSessResourceSetupItem struct {
 	PDUSessionResourceSetupRequestTransfer aper.OctetString
 }
 
+type pduSessResourceModifyItem struct {
+	PDUSessionID                            ngapType.PDUSessionID
+	NASPDU                                  *ngapType.NASPDU
+	PDUSessionResourceModifyRequestTransfer aper.OctetString
+}
+
 func HandleConnectRequest(gnbue *gnbctx.GnbCpUe,
 	intfcMsg common.InterfaceMessage) {
 
@@ -319,6 +325,48 @@ func HandlePduSessResourceReleaseCommand(gnbue *gnbctx.GnbCpUe,
 	SendToUe(gnbue, common.DATA_BEARER_RELEASE_REQUEST_EVENT, nil)
 }
 
+// TODO: Error handling
+func HandlePduSessResourceModifyRequest(gnbue *gnbctx.GnbCpUe,
+	intfcMsg common.InterfaceMessage) {
+	msg := intfcMsg.(*common.N2Message)
+	var amfUeNgapId *ngapType.AMFUENGAPID
+	var pduSessResourceModifyReqList *ngapType.PDUSessionResourceModifyListModReq
+
+	pdu := msg.NgapPdu
+
+	initiatingMessage := pdu.InitiatingMessage
+	pduSessResourceModifyReq := initiatingMessage.Value.PDUSessionResourceModifyRequest
+
+	for _, ie := range pduSessResourceModifyReq.ProtocolIEs.List {
+		switch ie.Id.Value {
+		case ngapType.ProtocolIEIDAMFUENGAPID:
+			amfUeNgapId = ie.Value.AMFUENGAPID
+			if amfUeNgapId == nil {
+				gnbue.Log.Errorln("AMFUENGAPID is nil")
+				return
+			}
+		case ngapType.ProtocolIEIDPDUSessionResourceModifyListModReq:
+			pduSessResourceModifyReqList = ie.Value.PDUSessionResourceModifyListModReq
+			if pduSessResourceModifyReqList == nil || len(pduSessResourceModifyReqList.List) == 0 {
+				gnbue.Log.Errorln("PDUSessionResourceModifyListModReq is empty")
+				return
+			}
+		}
+	}
+
+	var list []pduSessResourceModifyItem
+	for _, v := range pduSessResourceModifyReqList.List {
+		dst := pduSessResourceModifyItem{}
+		dst.NASPDU = v.NASPDU
+		dst.PDUSessionID = v.PDUSessionID
+		dst.PDUSessionResourceModifyRequestTransfer = v.PDUSessionResourceModifyRequestTransfer
+		list = append(list, dst)
+	}
+
+	ProcessPduSessResourceModifyList(gnbue, list,
+		common.PDU_SESS_RESOURCE_MODIFY_REQUEST_EVENT)
+}
+
 func HandleDataBearerSetupResponse(gnbue *gnbctx.GnbCpUe,
 	intfcMsg common.InterfaceMessage) {
 
@@ -598,6 +646,77 @@ func ProcessPduSessResourceSetupList(gnbue *gnbctx.GnbCpUe,
 	uemsg.DBParams = dbParamSet
 	uemsg.TriggeringEvent = event
 	gnbue.WriteUeChan <- &uemsg
+}
+
+func ProcessPduSessResourceModifyList(gnbue *gnbctx.GnbCpUe,
+	lst []pduSessResourceModifyItem, event common.EventType) {
+
+	var nasPdus common.NasPduList
+
+	for _, item := range lst {
+
+		//pduSessId := item.PDUSessionID.Value
+		//upCtx, err := gnbue.GetGnbUpUe(pduSessId)
+		//if err != nil {
+		//	gnbue.Log.Errorln("Failed to fetch PDU session context:", err)
+		//	return
+		//}
+
+		resourceModifyRequestTransfer := ngapType.PDUSessionResourceModifyRequestTransfer{}
+		err := aper.UnmarshalWithParams(item.PDUSessionResourceModifyRequestTransfer,
+			&resourceModifyRequestTransfer, "valueExt")
+		if err != nil {
+			gnbue.Log.Errorln("UnmarshalWithParams returned:", err)
+			return
+		}
+
+		var qosFlowAddOrModifyRequestList *ngapType.QosFlowAddOrModifyRequestList
+		for _, ie := range resourceModifyRequestTransfer.ProtocolIEs.List {
+			switch ie.Id.Value {
+			case ngapType.ProtocolIEIDQosFlowAddOrModifyRequestList:
+				qosFlowAddOrModifyRequestList = ie.Value.QosFlowAddOrModifyRequestList
+				if qosFlowAddOrModifyRequestList == nil || len(qosFlowAddOrModifyRequestList.List) == 0 {
+					gnbue.Log.Errorln("qosFlowAddOrModifyRequestList is empty")
+					return
+				}
+			}
+		}
+
+		var qosFlowId int64
+		var qosChar ngapType.QosCharacteristics
+		var arp ngapType.AllocationAndRetentionPriority
+		var nonDynamic5QI *ngapType.NonDynamic5QIDescriptor
+		for _, qosFlowAddOrModifyReqItem := range qosFlowAddOrModifyRequestList.List {
+			qosFlowId = qosFlowAddOrModifyReqItem.QosFlowIdentifier.Value
+			qosChar = qosFlowAddOrModifyReqItem.QosFlowLevelQosParameters.QosCharacteristics
+			arp = qosFlowAddOrModifyReqItem.QosFlowLevelQosParameters.AllocationAndRetentionPriority
+
+			gnbue.Log.Infoln("QoS Flow Id:", qosFlowId)
+			if qosChar.Present == ngapType.QosCharacteristicsPresentNonDynamic5QI {
+				nonDynamic5QI = qosChar.NonDynamic5QI
+				if nonDynamic5QI == nil {
+					gnbue.Log.Errorln("NonDynamic5QI is nil")
+					return
+				}
+				gnbue.Log.Infoln("Non Dynamic 5QI:", nonDynamic5QI.FiveQI.Value)
+			}
+			gnbue.Log.Infoln("ARP Priority Level:", arp.PriorityLevelARP.Value)
+			gnbue.Log.Infoln("Pre-emption Capability:", arp.PreEmptionCapability.Value)
+			gnbue.Log.Infoln("Pre-emption Vulnerability:", arp.PreEmptionVulnerability.Value)
+
+			//pduSess.SuccessQfiList = append(pduSess.SuccessQfiList, qosFlowId)
+			//gnbupue.AddQosFlow(qosFlowId, &qosFlowSetupReqItem)
+		}
+
+		if item.NASPDU != nil {
+			nasPdus = append(nasPdus, item.NASPDU.Value)
+		}
+	}
+
+	if len(nasPdus) != 0 {
+		SendToUe(gnbue, common.DL_INFO_TRANSFER_EVENT, nasPdus)
+		gnbue.Log.Traceln("Sent DL Information Transfer Event to UE")
+	}
 }
 
 func HandleQuitEvent(gnbue *gnbctx.GnbCpUe, intfcMsg common.InterfaceMessage) {

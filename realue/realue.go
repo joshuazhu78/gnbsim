@@ -60,6 +60,8 @@ func HandleEvents(ue *realuectx.RealUe) (err error) {
 			err = HandleConnectionReleaseRequestEvent(ue, msg)
 		case common.DEREG_ACCEPT_UE_TERM_EVENT:
 			err = HandleNwDeregAcceptEvent(ue, msg)
+		case common.PDU_SESS_MOD_COMPLETE_EVENT:
+			err = HandlePduSessModifyCompleteEvent(ue, msg)
 		case common.ERROR_EVENT:
 			HandleErrorEvent(ue, msg)
 		case common.QUIT_EVENT:

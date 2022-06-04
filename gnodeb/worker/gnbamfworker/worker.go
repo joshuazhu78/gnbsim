@@ -42,6 +42,8 @@ func HandleMessage(gnb *gnbctx.GNodeB, amf *gnbctx.GnbAmf, pkt []byte) error {
 			HandlePduSessResourceReleaseCommand(gnb, amf, pdu)
 		case ngapType.ProcedureCodeUEContextRelease:
 			HandleUeCtxReleaseCommand(gnb, amf, pdu)
+		case ngapType.ProcedureCodePDUSessionResourceModify:
+			HandlePduSessResourceModifyRequest(gnb, amf, pdu)
 		}
 	case ngapType.NGAPPDUPresentSuccessfulOutcome:
 		successfulOutcome := pdu.SuccessfulOutcome

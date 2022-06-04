@@ -16,6 +16,7 @@ import (
 	"github.com/omec-project/gnbsim/profile/util"
 	"github.com/omec-project/gnbsim/simue"
 	simuectx "github.com/omec-project/gnbsim/simue/context"
+	"github.com/omec-project/gnbsim/profile/ransim"
 )
 
 //profile names
@@ -28,6 +29,7 @@ const (
 	NW_TRIGG_UE_DEREG       string = "nwtriggeruedereg"
 	UE_REQ_PDU_SESS_RELEASE string = "uereqpdusessrelease"
 	NW_REQ_PDU_SESS_RELEASE string = "nwreqpdusessrelease"
+	NW_REQ_PDU_SESS_MODIFY  string = "nwreqpdusessmodify"
 )
 
 func InitializeAllProfiles() {
@@ -61,10 +63,13 @@ func ExecuteProfile(profile *profctx.Profile, summaryChan chan common.InterfaceM
 		ErrorList:   make([]error, 0, 10),
 	}
 
+	simUeChan := make(chan*simuectx.SimUe)
+	go ransim.RunGetUEsCommand(simUeChan)
 	// Currently executing profile for one IMSI at a time
 	for count := 1; count <= profile.UeCount; count++ {
 		imsiStr := "imsi-" + strconv.Itoa(imsi)
 		simUe := simuectx.NewSimUe(imsiStr, gnb, profile)
+		simUeChan <- simUe
 
 		wg.Add(1)
 		go func() {
@@ -193,7 +198,18 @@ func initEventMap(profile *profctx.Profile) {
 			common.PDU_SESS_REL_COMMAND_EVENT: common.PDU_SESS_REL_COMPLETE_EVENT,
 			common.PROFILE_PASS_EVENT:         common.QUIT_EVENT,
 		}
-
+	case NW_REQ_PDU_SESS_MODIFY:
+		profile.Events = map[common.EventType]common.EventType{
+			common.REG_REQUEST_EVENT:          common.AUTH_REQUEST_EVENT,
+			common.AUTH_REQUEST_EVENT:         common.AUTH_RESPONSE_EVENT,
+			common.SEC_MOD_COMMAND_EVENT:      common.SEC_MOD_COMPLETE_EVENT,
+			common.REG_ACCEPT_EVENT:           common.REG_COMPLETE_EVENT,
+			common.PDU_SESS_EST_REQUEST_EVENT: common.PDU_SESS_EST_ACCEPT_EVENT,
+			common.PDU_SESS_EST_ACCEPT_EVENT:  common.PDU_SESS_EST_ACCEPT_EVENT,
+			common.PDU_SESS_MOD_REQUEST_EVENT: common.PDU_SESS_MOD_COMMAND_EVENT,
+			common.PDU_SESS_MOD_COMMAND_EVENT: common.PDU_SESS_MOD_COMPLETE_EVENT,
+			common.PROFILE_PASS_EVENT:         common.QUIT_EVENT,
+		}
 	}
 }
 
@@ -249,6 +265,12 @@ func initProcedureList(profile *profctx.Profile) {
 			common.PDU_SESSION_ESTABLISHMENT_PROCEDURE,
 			common.USER_DATA_PKT_GENERATION_PROCEDURE,
 			common.NW_REQUESTED_PDU_SESSION_RELEASE_PROCEDURE,
+		}
+	case NW_REQ_PDU_SESS_MODIFY:
+		profile.Procedures = []common.ProcedureType{
+			common.REGISTRATION_PROCEDURE,
+			common.PDU_SESSION_ESTABLISHMENT_PROCEDURE,
+			common.USER_DATA_PKT_GENERATION_PROCEDURE,
 		}
 	}
 }
